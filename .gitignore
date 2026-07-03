@@ -6,6 +6,7 @@ __pycache__/
 runs/
 *.mp4
 *.avi
+!test_videos/own_test_sample.mp4
 
 models/*.onnx
 models/*.pt

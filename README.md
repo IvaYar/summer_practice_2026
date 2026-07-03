@@ -75,6 +75,12 @@ python -m car_detector.app --config configs/pi5_cpu.yaml --headless
 python -m car_detector.app --config configs/video_debug.yaml --video path/to/road.mp4
 ```
 
+В репозитории есть короткий тестовый sample:
+
+```bash
+python -m car_detector.app --config configs/video_debug.yaml --video test_videos/own_test_sample.mp4
+```
+
 Выход из окна: `q` или `Esc`.
 
 ## Бенчмарк настоящего FPS детектора
