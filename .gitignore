@@ -4,6 +4,7 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 runs/
+datasets/
 *.mp4
 *.avi
 !test_videos/own_test_sample.mp4

@@ -110,6 +110,36 @@ python tools/benchmark.py --model models/yolo11n_320.onnx --source picamera2 --s
 - проверь охлаждение и питание Pi 5;
 - для стабильных 30 FPS переходи на Hailo/TPU backend.
 
+## Ночное vehicle-only обучение
+
+Экспериментальный путь: собрать псевдо-разметку из твоего видео и обучить модель только на `car,bus,truck`. Это может помочь подстроиться под dashcam-ракурс, но авторазметка не заменяет ручную правку кадров.
+
+На Windows-ПК:
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip wheel
+.\.venv\Scripts\python.exe -m pip install -r requirements-training.txt
+```
+
+Собрать датасет из видео:
+
+```powershell
+.\.venv\Scripts\python.exe tools\build_vehicle_dataset.py --video "C:\Users\jarom\Desktop\car_project\vehicle-oncoming-detector\test_videos\own_test.mp4" --output datasets\vehicle_pseudo --teacher yolo26n.pt --label-imgsz 640 --conf 0.18 --sample-every 15 --max-frames 800 --overwrite
+```
+
+Запустить обучение на CPU:
+
+```powershell
+.\.venv\Scripts\python.exe tools\train_vehicle_model.py --data datasets\vehicle_pseudo\dataset.yaml --weights yolo26n.pt --imgsz 320 --epochs 40 --batch 2 --device cpu --output models\vehicle_yolo26n_320.onnx
+```
+
+Проверить результат:
+
+```powershell
+.\.venv\Scripts\python.exe -m car_detector.app --config configs/video_debug.yaml --video test_videos\own_test_sample.mp4 --model models\vehicle_yolo26n_320.onnx --input-size 320 --conf 0.2
+```
+
 ## Структура
 
 - `car_detector/app.py` - realtime-приложение;
