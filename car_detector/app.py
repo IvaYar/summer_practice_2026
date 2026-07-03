@@ -9,7 +9,7 @@ from .async_infer import AsyncDetector
 from .camera import create_source
 from .config import merge_options, parse_classes
 from .detector import InferenceResult, YoloOnnxDetector
-from .overlay import age_ms, draw_detections, draw_status
+from .overlay import age_ms, draw_detections, draw_roi, draw_status
 from .rate import RateMeter
 
 WINDOW_NAME = "Pi5 car detector"
@@ -44,6 +44,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-box-aspect-ratio", type=float, default=None)
     parser.add_argument("--edge-margin-ratio", type=float, default=None)
     parser.add_argument("--edge-min-conf", type=float, default=None)
+    parser.add_argument("--roi", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--roi-x1-ratio", type=float, default=None)
+    parser.add_argument("--roi-y1-ratio", type=float, default=None)
+    parser.add_argument("--roi-x2-ratio", type=float, default=None)
+    parser.add_argument("--roi-y2-ratio", type=float, default=None)
+    parser.add_argument("--show-roi", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--print-every", type=float, default=None)
     parser.add_argument("--max-frames", type=int, default=None)
     return parser
@@ -70,6 +76,11 @@ def main() -> int:
         max_box_aspect_ratio=options["max_box_aspect_ratio"],
         edge_margin_ratio=options["edge_margin_ratio"],
         edge_min_conf=options["edge_min_conf"],
+        roi_enabled=options["roi"],
+        roi_x1_ratio=options["roi_x1_ratio"],
+        roi_y1_ratio=options["roi_y1_ratio"],
+        roi_x2_ratio=options["roi_x2_ratio"],
+        roi_y2_ratio=options["roi_y2_ratio"],
     )
     source = create_source(
         source=options["source"],
@@ -113,6 +124,8 @@ def main() -> int:
                 latest_result = detector.detect_timed(frame, frame_id)
 
             draw_detections(frame, latest_result.detections)
+            if options["roi"] and options["show_roi"]:
+                draw_roi(frame, detector.roi_box(frame.shape[:2]))
             draw_status(
                 frame,
                 [

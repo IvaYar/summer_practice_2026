@@ -1,11 +1,12 @@
-model: models/yolo11n_256.onnx
-source: auto
+model: models/yolo26n_256_classic.onnx
+source: opencv
+video: null
 camera_index: 0
 width: 640
-height: 360
+height: 480
 fps: 30
 input_size: 256
-conf: 0.38
+conf: 0.2
 iou: 0.45
 classes: car,bus,truck
 threads: 4
@@ -22,7 +23,7 @@ min_box_aspect_ratio: 0.2
 max_box_aspect_ratio: 5.0
 edge_margin_ratio: 0.02
 edge_min_conf: 0.35
-roi: false
+roi: true
 roi_x1_ratio: 0.0
 roi_y1_ratio: 0.28
 roi_x2_ratio: 1.0

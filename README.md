@@ -81,6 +81,18 @@ python -m car_detector.app --config configs/video_debug.yaml --video path/to/roa
 python -m car_detector.app --config configs/video_debug.yaml --video test_videos/own_test_sample.mp4
 ```
 
+Быстрый ROI-режим для дорожного видео: модель смотрит только на область дороги и может работать с меньшим `input_size`:
+
+```bash
+python -m car_detector.app --config configs/video_roi_fast.yaml --video test_videos/own_test.mp4
+```
+
+Границы ROI задаются долями кадра. Например, чтобы чуть выше захватить дальние машины:
+
+```bash
+python -m car_detector.app --config configs/video_roi_fast.yaml --video test_videos/own_test.mp4 --roi-y1-ratio 0.22
+```
+
 Выход из окна: `q` или `Esc`.
 
 ## Бенчмарк настоящего FPS детектора

@@ -28,6 +28,20 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--iou", type=float, default=0.45)
     parser.add_argument("--classes", default="car,bus,truck")
     parser.add_argument("--threads", type=int, default=4)
+    parser.add_argument("--geometry-filter", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--min-box-area-ratio", type=float, default=0.00002)
+    parser.add_argument("--max-box-area-ratio", type=float, default=0.28)
+    parser.add_argument("--max-box-width-ratio", type=float, default=0.78)
+    parser.add_argument("--max-box-height-ratio", type=float, default=0.75)
+    parser.add_argument("--min-box-aspect-ratio", type=float, default=0.20)
+    parser.add_argument("--max-box-aspect-ratio", type=float, default=5.00)
+    parser.add_argument("--edge-margin-ratio", type=float, default=0.02)
+    parser.add_argument("--edge-min-conf", type=float, default=0.35)
+    parser.add_argument("--roi", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--roi-x1-ratio", type=float, default=0.00)
+    parser.add_argument("--roi-y1-ratio", type=float, default=0.28)
+    parser.add_argument("--roi-x2-ratio", type=float, default=1.00)
+    parser.add_argument("--roi-y2-ratio", type=float, default=0.88)
     parser.add_argument("--seconds", type=float, default=20.0)
     parser.add_argument("--warmup", type=int, default=5)
     return parser
@@ -50,6 +64,20 @@ def main() -> int:
         iou_threshold=args.iou,
         class_names=parse_classes(args.classes),
         threads=args.threads,
+        geometry_filter=args.geometry_filter,
+        min_box_area_ratio=args.min_box_area_ratio,
+        max_box_area_ratio=args.max_box_area_ratio,
+        max_box_width_ratio=args.max_box_width_ratio,
+        max_box_height_ratio=args.max_box_height_ratio,
+        min_box_aspect_ratio=args.min_box_aspect_ratio,
+        max_box_aspect_ratio=args.max_box_aspect_ratio,
+        edge_margin_ratio=args.edge_margin_ratio,
+        edge_min_conf=args.edge_min_conf,
+        roi_enabled=args.roi,
+        roi_x1_ratio=args.roi_x1_ratio,
+        roi_y1_ratio=args.roi_y1_ratio,
+        roi_x2_ratio=args.roi_x2_ratio,
+        roi_y2_ratio=args.roi_y2_ratio,
     )
 
     try:

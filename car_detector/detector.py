@@ -44,6 +44,11 @@ class YoloOnnxDetector:
         max_box_aspect_ratio: float = 5.00,
         edge_margin_ratio: float = 0.02,
         edge_min_conf: float = 0.35,
+        roi_enabled: bool = False,
+        roi_x1_ratio: float = 0.00,
+        roi_y1_ratio: float = 0.28,
+        roi_x2_ratio: float = 1.00,
+        roi_y2_ratio: float = 0.88,
     ):
         path = Path(model_path)
         if not path.exists():
@@ -63,6 +68,11 @@ class YoloOnnxDetector:
         self.max_box_aspect_ratio = float(max_box_aspect_ratio)
         self.edge_margin_ratio = float(edge_margin_ratio)
         self.edge_min_conf = float(edge_min_conf)
+        self.roi_enabled = bool(roi_enabled)
+        self.roi_x1_ratio = float(roi_x1_ratio)
+        self.roi_y1_ratio = float(roi_y1_ratio)
+        self.roi_x2_ratio = float(roi_x2_ratio)
+        self.roi_y2_ratio = float(roi_y2_ratio)
         self.net = cv2.dnn.readNetFromONNX(str(path))
         self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
         self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
@@ -71,18 +81,58 @@ class YoloOnnxDetector:
             cv2.setNumThreads(int(threads))
 
     def detect(self, frame: np.ndarray) -> tuple[Detection, ...]:
-        input_image, ratio, pad = letterbox(frame, self.input_size)
+        detection_frame, offset = self._crop_to_roi(frame)
+        input_image, ratio, pad = letterbox(detection_frame, self.input_size)
         blob = cv2.dnn.blobFromImage(input_image, 1 / 255.0, (self.input_size, self.input_size), swapRB=True)
         self.net.setInput(blob)
         outputs = self.net.forward(self.output_names)
         output = outputs[0] if isinstance(outputs, (tuple, list)) else outputs
-        return self._postprocess(output, frame.shape[:2], ratio, pad)
+        detections = self._postprocess(output, detection_frame.shape[:2], ratio, pad)
+        return self._offset_detections(detections, offset)
 
     def detect_timed(self, frame: np.ndarray, frame_id: int = 0) -> InferenceResult:
         started = perf_counter()
         detections = self.detect(frame)
         inference_ms = (perf_counter() - started) * 1000.0
         return InferenceResult(detections, inference_ms, perf_counter(), frame_id)
+
+    def roi_box(self, frame_shape: tuple[int, int]) -> tuple[int, int, int, int]:
+        height, width = frame_shape
+        if not self.roi_enabled:
+            return 0, 0, width, height
+
+        x1 = int(np.clip(round(width * self.roi_x1_ratio), 0, width - 2))
+        y1 = int(np.clip(round(height * self.roi_y1_ratio), 0, height - 2))
+        x2 = int(np.clip(round(width * self.roi_x2_ratio), x1 + 2, width))
+        y2 = int(np.clip(round(height * self.roi_y2_ratio), y1 + 2, height))
+        return x1, y1, x2, y2
+
+    def _crop_to_roi(self, frame: np.ndarray) -> tuple[np.ndarray, tuple[int, int]]:
+        x1, y1, x2, y2 = self.roi_box(frame.shape[:2])
+        if x1 == 0 and y1 == 0 and x2 == frame.shape[1] and y2 == frame.shape[0]:
+            return frame, (0, 0)
+        return frame[y1:y2, x1:x2], (x1, y1)
+
+    @staticmethod
+    def _offset_detections(
+        detections: tuple[Detection, ...],
+        offset: tuple[int, int],
+    ) -> tuple[Detection, ...]:
+        offset_x, offset_y = offset
+        if offset_x == 0 and offset_y == 0:
+            return detections
+        shifted = []
+        for detection in detections:
+            x1, y1, x2, y2 = detection.box
+            shifted.append(
+                Detection(
+                    class_id=detection.class_id,
+                    class_name=detection.class_name,
+                    confidence=detection.confidence,
+                    box=(x1 + offset_x, y1 + offset_y, x2 + offset_x, y2 + offset_y),
+                )
+            )
+        return tuple(shifted)
 
     def _postprocess(
         self,
@@ -239,7 +289,6 @@ class YoloOnnxDetector:
         margin_y = max(1, int(frame_height * self.edge_margin_ratio))
         touches_edge = (
             left <= margin_x
-            or top <= margin_y
             or right >= frame_width - 1 - margin_x
             or bottom >= frame_height - 1 - margin_y
         )

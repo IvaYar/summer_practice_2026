@@ -23,6 +23,11 @@ def draw_detections(frame, detections: tuple[Detection, ...]) -> None:
         _draw_label(frame, label, x1, max(0, y1 - 8), color)
 
 
+def draw_roi(frame, box: tuple[int, int, int, int]) -> None:
+    x1, y1, x2, y2 = box
+    cv2.rectangle(frame, (x1, y1), (x2, y2), (245, 245, 245), 1)
+
+
 def draw_status(frame, lines: list[str]) -> None:
     x, y = 10, 24
     line_height = 24

@@ -36,6 +36,12 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "max_box_aspect_ratio": 5.00,
     "edge_margin_ratio": 0.02,
     "edge_min_conf": 0.35,
+    "roi": False,
+    "roi_x1_ratio": 0.00,
+    "roi_y1_ratio": 0.28,
+    "roi_x2_ratio": 1.00,
+    "roi_y2_ratio": 0.88,
+    "show_roi": True,
     "print_every": 1.0,
     "max_frames": 0,
 }
