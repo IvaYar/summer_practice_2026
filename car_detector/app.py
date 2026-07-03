@@ -12,6 +12,8 @@ from .detector import InferenceResult, YoloOnnxDetector
 from .overlay import age_ms, draw_detections, draw_status
 from .rate import RateMeter
 
+WINDOW_NAME = "Pi5 car detector"
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Realtime vehicle detection for Raspberry Pi 5.")
@@ -31,6 +33,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--async-inference", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--headless", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--save", default=None, help="Optional output video path.")
+    parser.add_argument("--window-x", type=int, default=None, help="Display window X position.")
+    parser.add_argument("--window-y", type=int, default=None, help="Display window Y position.")
     parser.add_argument("--print-every", type=float, default=None)
     parser.add_argument("--max-frames", type=int, default=None)
     return parser
@@ -72,6 +76,10 @@ def main() -> int:
         f"classes={','.join(class_names)} async={bool(async_worker)}"
     )
 
+    if not options["headless"]:
+        cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
+        cv2.moveWindow(WINDOW_NAME, int(options["window_x"]), int(options["window_y"]))
+
     try:
         while True:
             frame = source.read()
@@ -104,7 +112,7 @@ def main() -> int:
                 writer.write(frame)
 
             if not options["headless"]:
-                cv2.imshow("Pi5 car detector", frame)
+                cv2.imshow(WINDOW_NAME, frame)
                 if cv2.waitKey(1) & 0xFF in {ord("q"), 27}:
                     break
 

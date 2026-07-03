@@ -11,5 +11,7 @@ classes: car,bus,truck
 threads: 4
 async_inference: true
 headless: false
+window_x: 0
+window_y: 0
 print_every: 1.0
 max_frames: 0

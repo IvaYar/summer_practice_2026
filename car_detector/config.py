@@ -25,6 +25,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "async_inference": True,
     "headless": False,
     "save": None,
+    "window_x": 0,
+    "window_y": 0,
     "print_every": 1.0,
     "max_frames": 0,
 }
