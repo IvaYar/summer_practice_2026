@@ -76,7 +76,15 @@ class YoloOnnxDetector:
         predictions = np.squeeze(output)
         if predictions.ndim == 1:
             predictions = np.expand_dims(predictions, axis=0)
-        if predictions.shape[0] <= 256 and predictions.shape[0] < predictions.shape[1]:
+        if predictions.ndim != 2:
+            predictions = predictions.reshape(-1, predictions.shape[-1])
+
+        rows, columns = predictions.shape
+        if columns == 6:
+            pass
+        elif rows == 6 and columns != 6:
+            predictions = predictions.T
+        elif rows in {len(COCO_NAMES) + 4, len(COCO_NAMES) + 5} and columns != rows:
             predictions = predictions.T
 
         boxes: list[list[int]] = []
@@ -88,21 +96,17 @@ class YoloOnnxDetector:
         for row in predictions:
             if row.shape[0] < 6:
                 continue
-            box_xywh = row[:4]
-            class_scores, objectness = self._split_scores(row)
-            available_ids = [class_id for class_id in self.target_class_ids if class_id < len(class_scores)]
-            if not available_ids:
+
+            parsed = self._parse_prediction(row)
+            if parsed is None:
                 continue
-            best_class_id = max(available_ids, key=lambda class_id: float(class_scores[class_id]))
-            confidence = float(class_scores[best_class_id]) * objectness
+            best_class_id, confidence, box_mode = parsed
+            if best_class_id not in self.target_class_ids:
+                continue
             if confidence < self.conf_threshold:
                 continue
 
-            x_center, y_center, width, height = map(float, box_xywh)
-            left = (x_center - width / 2.0 - pad_x) / ratio
-            top = (y_center - height / 2.0 - pad_y) / ratio
-            right = (x_center + width / 2.0 - pad_x) / ratio
-            bottom = (y_center + height / 2.0 - pad_y) / ratio
+            left, top, right, bottom = self._scale_box(row[:4], box_mode, ratio, pad_x, pad_y)
 
             left = int(np.clip(left, 0, original_w - 1))
             top = int(np.clip(top, 0, original_h - 1))
@@ -134,6 +138,49 @@ class YoloOnnxDetector:
             )
         detections.sort(key=lambda detection: detection.confidence, reverse=True)
         return tuple(detections)
+
+    def _parse_prediction(self, row: np.ndarray) -> tuple[int, float, str] | None:
+        if row.shape[0] == 6:
+            confidence = float(row[4])
+            class_id = int(round(float(row[5])))
+            if class_id < 0 or class_id >= len(COCO_NAMES):
+                return None
+            return class_id, confidence, "xyxy"
+
+        class_scores, objectness = self._split_scores(row)
+        available_ids = [class_id for class_id in self.target_class_ids if class_id < len(class_scores)]
+        if not available_ids:
+            return None
+        class_id = max(available_ids, key=lambda candidate: float(class_scores[candidate]))
+        confidence = float(class_scores[class_id]) * objectness
+        return class_id, confidence, "xywh"
+
+    def _scale_box(
+        self,
+        raw_box: np.ndarray,
+        box_mode: str,
+        ratio: float,
+        pad_x: float,
+        pad_y: float,
+    ) -> tuple[float, float, float, float]:
+        box = raw_box.astype(np.float32).copy()
+        if float(np.max(box)) <= 1.5:
+            box *= float(self.input_size)
+
+        if box_mode == "xyxy":
+            left = (float(box[0]) - pad_x) / ratio
+            top = (float(box[1]) - pad_y) / ratio
+            right = (float(box[2]) - pad_x) / ratio
+            bottom = (float(box[3]) - pad_y) / ratio
+            if right > left and bottom > top:
+                return left, top, right, bottom
+
+        x_center, y_center, width, height = map(float, box)
+        left = (x_center - width / 2.0 - pad_x) / ratio
+        top = (y_center - height / 2.0 - pad_y) / ratio
+        right = (x_center + width / 2.0 - pad_x) / ratio
+        bottom = (y_center + height / 2.0 - pad_y) / ratio
+        return left, top, right, bottom
 
     @staticmethod
     def _split_scores(row: np.ndarray) -> tuple[np.ndarray, float]:
