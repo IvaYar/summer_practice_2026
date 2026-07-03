@@ -35,6 +35,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--save", default=None, help="Optional output video path.")
     parser.add_argument("--window-x", type=int, default=None, help="Display window X position.")
     parser.add_argument("--window-y", type=int, default=None, help="Display window Y position.")
+    parser.add_argument("--geometry-filter", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--min-box-area-ratio", type=float, default=None)
+    parser.add_argument("--max-box-area-ratio", type=float, default=None)
+    parser.add_argument("--max-box-width-ratio", type=float, default=None)
+    parser.add_argument("--max-box-height-ratio", type=float, default=None)
+    parser.add_argument("--min-box-aspect-ratio", type=float, default=None)
+    parser.add_argument("--max-box-aspect-ratio", type=float, default=None)
+    parser.add_argument("--edge-margin-ratio", type=float, default=None)
+    parser.add_argument("--edge-min-conf", type=float, default=None)
     parser.add_argument("--print-every", type=float, default=None)
     parser.add_argument("--max-frames", type=int, default=None)
     return parser
@@ -52,6 +61,15 @@ def main() -> int:
         iou_threshold=options["iou"],
         class_names=class_names,
         threads=options["threads"],
+        geometry_filter=options["geometry_filter"],
+        min_box_area_ratio=options["min_box_area_ratio"],
+        max_box_area_ratio=options["max_box_area_ratio"],
+        max_box_width_ratio=options["max_box_width_ratio"],
+        max_box_height_ratio=options["max_box_height_ratio"],
+        min_box_aspect_ratio=options["min_box_aspect_ratio"],
+        max_box_aspect_ratio=options["max_box_aspect_ratio"],
+        edge_margin_ratio=options["edge_margin_ratio"],
+        edge_min_conf=options["edge_min_conf"],
     )
     source = create_source(
         source=options["source"],

@@ -35,6 +35,15 @@ class YoloOnnxDetector:
         iou_threshold: float,
         class_names: tuple[str, ...],
         threads: int = 0,
+        geometry_filter: bool = True,
+        min_box_area_ratio: float = 0.00002,
+        max_box_area_ratio: float = 0.28,
+        max_box_width_ratio: float = 0.78,
+        max_box_height_ratio: float = 0.75,
+        min_box_aspect_ratio: float = 0.20,
+        max_box_aspect_ratio: float = 5.00,
+        edge_margin_ratio: float = 0.02,
+        edge_min_conf: float = 0.35,
     ):
         path = Path(model_path)
         if not path.exists():
@@ -45,6 +54,15 @@ class YoloOnnxDetector:
         self.conf_threshold = float(conf_threshold)
         self.iou_threshold = float(iou_threshold)
         self.target_class_ids = class_ids_from_names(class_names)
+        self.geometry_filter = bool(geometry_filter)
+        self.min_box_area_ratio = float(min_box_area_ratio)
+        self.max_box_area_ratio = float(max_box_area_ratio)
+        self.max_box_width_ratio = float(max_box_width_ratio)
+        self.max_box_height_ratio = float(max_box_height_ratio)
+        self.min_box_aspect_ratio = float(min_box_aspect_ratio)
+        self.max_box_aspect_ratio = float(max_box_aspect_ratio)
+        self.edge_margin_ratio = float(edge_margin_ratio)
+        self.edge_min_conf = float(edge_min_conf)
         self.net = cv2.dnn.readNetFromONNX(str(path))
         self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
         self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
@@ -114,6 +132,16 @@ class YoloOnnxDetector:
             bottom = int(np.clip(bottom, 0, original_h - 1))
             if right <= left or bottom <= top:
                 continue
+            if self.geometry_filter and not self._passes_geometry_filter(
+                left,
+                top,
+                right,
+                bottom,
+                confidence,
+                original_w,
+                original_h,
+            ):
+                continue
 
             boxes.append([left, top, right - left, bottom - top])
             confidences.append(confidence)
@@ -181,6 +209,44 @@ class YoloOnnxDetector:
         right = (x_center + width / 2.0 - pad_x) / ratio
         bottom = (y_center + height / 2.0 - pad_y) / ratio
         return left, top, right, bottom
+
+    def _passes_geometry_filter(
+        self,
+        left: int,
+        top: int,
+        right: int,
+        bottom: int,
+        confidence: float,
+        frame_width: int,
+        frame_height: int,
+    ) -> bool:
+        width = right - left
+        height = bottom - top
+        frame_area = max(1, frame_width * frame_height)
+        area_ratio = (width * height) / frame_area
+        width_ratio = width / max(1, frame_width)
+        height_ratio = height / max(1, frame_height)
+        aspect_ratio = width / max(1, height)
+
+        if area_ratio < self.min_box_area_ratio or area_ratio > self.max_box_area_ratio:
+            return False
+        if width_ratio > self.max_box_width_ratio or height_ratio > self.max_box_height_ratio:
+            return False
+        if aspect_ratio < self.min_box_aspect_ratio or aspect_ratio > self.max_box_aspect_ratio:
+            return False
+
+        margin_x = max(1, int(frame_width * self.edge_margin_ratio))
+        margin_y = max(1, int(frame_height * self.edge_margin_ratio))
+        touches_edge = (
+            left <= margin_x
+            or top <= margin_y
+            or right >= frame_width - 1 - margin_x
+            or bottom >= frame_height - 1 - margin_y
+        )
+        if touches_edge and confidence < self.edge_min_conf:
+            return False
+
+        return True
 
     @staticmethod
     def _split_scores(row: np.ndarray) -> tuple[np.ndarray, float]:
