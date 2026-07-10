@@ -140,6 +140,55 @@ py -3 -m venv .venv
 .\.venv\Scripts\python.exe -m car_detector.app --config configs/video_debug.yaml --video test_videos\own_test_sample.mp4 --model models\vehicle_yolo26n_320.onnx --input-size 320 --conf 0.2
 ```
 
+## BDD100K vehicle-only обучение
+
+BDD100K ближе к dashcam-видео, чем авторазметка одного ролика. Нужны официальные архивы:
+
+- `100K Images`
+- `Detection 2020 Labels`
+
+Скачать их нужно вручную с сайта BDD100K после регистрации: https://www.bdd100k.com/
+
+Распакуй архивы в одну папку, например:
+
+```text
+C:\datasets\bdd100k
+```
+
+Конвертер ожидает одну из таких структур:
+
+```text
+C:\datasets\bdd100k\images\100k\train
+C:\datasets\bdd100k\images\100k\val
+C:\datasets\bdd100k\labels\det_20\det_train.json
+C:\datasets\bdd100k\labels\det_20\det_val.json
+```
+
+или такую:
+
+```text
+C:\datasets\bdd100k\bdd100k\images\100k\train
+C:\datasets\bdd100k\bdd100k\labels\det_20\det_train.json
+```
+
+Собрать subset `car,bus,truck` и обучить модель:
+
+```powershell
+.\scripts\run_bdd100k_training.ps1 -BddRoot "C:\datasets\bdd100k" -MaxTrain 10000 -MaxVal 2000 -Epochs 30 -Batch 2
+```
+
+Готовая модель:
+
+```text
+models\bdd_vehicle_yolo26n_320.onnx
+```
+
+Проверка:
+
+```powershell
+.\.venv\Scripts\python.exe -m car_detector.app --config configs/video_debug.yaml --video "C:\Users\jarom\Desktop\car_project\vehicle-oncoming-detector\test_videos\own_test.mp4" --model models\bdd_vehicle_yolo26n_320.onnx --input-size 320 --conf 0.2
+```
+
 ## Структура
 
 - `car_detector/app.py` - realtime-приложение;
