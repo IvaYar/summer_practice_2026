@@ -21,6 +21,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "conf": 0.35,
     "iou": 0.45,
     "classes": "car,bus,truck",
+    "model_classes": "coco",
     "threads": 4,
     "async_inference": True,
     "headless": False,

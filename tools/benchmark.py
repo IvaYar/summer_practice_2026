@@ -27,6 +27,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--conf", type=float, default=0.35)
     parser.add_argument("--iou", type=float, default=0.45)
     parser.add_argument("--classes", default="car,bus,truck")
+    parser.add_argument("--model-classes", default="coco")
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--geometry-filter", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--min-box-area-ratio", type=float, default=0.00002)
@@ -63,6 +64,7 @@ def main() -> int:
         conf_threshold=args.conf,
         iou_threshold=args.iou,
         class_names=parse_classes(args.classes),
+        model_class_names=None if args.model_classes == "coco" else parse_classes(args.model_classes),
         threads=args.threads,
         geometry_filter=args.geometry_filter,
         min_box_area_ratio=args.min_box_area_ratio,

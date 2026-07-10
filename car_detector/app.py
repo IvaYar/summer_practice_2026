@@ -29,6 +29,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--conf", type=float, default=None)
     parser.add_argument("--iou", type=float, default=None)
     parser.add_argument("--classes", default=None, help="Comma-separated COCO classes, e.g. car,bus,truck.")
+    parser.add_argument(
+        "--model-classes",
+        default=None,
+        help="Output class order. Use 'coco' for COCO models or comma-separated names for custom models.",
+    )
     parser.add_argument("--threads", type=int, default=None)
     parser.add_argument("--async-inference", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--headless", action=argparse.BooleanOptionalAction, default=None)
@@ -59,6 +64,7 @@ def main() -> int:
     args = build_parser().parse_args()
     options = merge_options(args.config, vars(args))
     class_names = parse_classes(options["classes"])
+    model_class_names = None if options["model_classes"] == "coco" else parse_classes(options["model_classes"])
 
     detector = YoloOnnxDetector(
         model_path=options["model"],
@@ -66,6 +72,7 @@ def main() -> int:
         conf_threshold=options["conf"],
         iou_threshold=options["iou"],
         class_names=class_names,
+        model_class_names=model_class_names,
         threads=options["threads"],
         geometry_filter=options["geometry_filter"],
         min_box_area_ratio=options["min_box_area_ratio"],

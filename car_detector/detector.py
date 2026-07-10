@@ -7,7 +7,7 @@ from time import perf_counter
 import cv2
 import numpy as np
 
-from .coco import COCO_NAMES, class_ids_from_names
+from .coco import COCO_NAMES, class_ids_from_model_names
 
 
 @dataclass(frozen=True)
@@ -34,6 +34,7 @@ class YoloOnnxDetector:
         conf_threshold: float,
         iou_threshold: float,
         class_names: tuple[str, ...],
+        model_class_names: tuple[str, ...] | None = None,
         threads: int = 0,
         geometry_filter: bool = True,
         min_box_area_ratio: float = 0.00002,
@@ -58,7 +59,8 @@ class YoloOnnxDetector:
         self.input_size = int(input_size)
         self.conf_threshold = float(conf_threshold)
         self.iou_threshold = float(iou_threshold)
-        self.target_class_ids = class_ids_from_names(class_names)
+        self.model_class_names = model_class_names or COCO_NAMES
+        self.target_class_ids = class_ids_from_model_names(class_names, self.model_class_names)
         self.geometry_filter = bool(geometry_filter)
         self.min_box_area_ratio = float(min_box_area_ratio)
         self.max_box_area_ratio = float(max_box_area_ratio)
@@ -152,7 +154,12 @@ class YoloOnnxDetector:
             pass
         elif rows == 6 and columns != 6:
             predictions = predictions.T
-        elif rows in {len(COCO_NAMES) + 4, len(COCO_NAMES) + 5} and columns != rows:
+        elif rows in {
+            len(COCO_NAMES) + 4,
+            len(COCO_NAMES) + 5,
+            len(self.model_class_names) + 4,
+            len(self.model_class_names) + 5,
+        } and columns != rows:
             predictions = predictions.T
 
         boxes: list[list[int]] = []
@@ -209,7 +216,7 @@ class YoloOnnxDetector:
             detections.append(
                 Detection(
                     class_id=class_id,
-                    class_name=COCO_NAMES[class_id],
+                    class_name=self.model_class_names[class_id],
                     confidence=confidences[int(index)],
                     box=(x, y, x + w, y + h),
                 )
@@ -221,7 +228,7 @@ class YoloOnnxDetector:
         if row.shape[0] == 6:
             confidence = float(row[4])
             class_id = int(round(float(row[5])))
-            if class_id < 0 or class_id >= len(COCO_NAMES):
+            if class_id < 0 or class_id >= len(self.model_class_names):
                 return None
             return class_id, confidence, "xyxy"
 
@@ -297,12 +304,11 @@ class YoloOnnxDetector:
 
         return True
 
-    @staticmethod
-    def _split_scores(row: np.ndarray) -> tuple[np.ndarray, float]:
-        coco_count = len(COCO_NAMES)
-        if row.shape[0] == 5 + coco_count:
+    def _split_scores(self, row: np.ndarray) -> tuple[np.ndarray, float]:
+        class_count = len(self.model_class_names)
+        if row.shape[0] == 5 + class_count:
             return row[5:], float(row[4])
-        if row.shape[0] == 4 + coco_count:
+        if row.shape[0] == 4 + class_count:
             return row[4:], 1.0
         if row.shape[0] > 85:
             return row[5:], float(row[4])

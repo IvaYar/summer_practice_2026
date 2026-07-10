@@ -85,8 +85,15 @@ DEFAULT_VEHICLE_CLASSES = ("car", "bus", "truck")
 
 
 def class_ids_from_names(names: list[str] | tuple[str, ...]) -> set[int]:
-    missing = [name for name in names if name not in COCO_NAMES]
+    return class_ids_from_model_names(names, COCO_NAMES)
+
+
+def class_ids_from_model_names(
+    names: list[str] | tuple[str, ...],
+    model_names: list[str] | tuple[str, ...],
+) -> set[int]:
+    missing = [name for name in names if name not in model_names]
     if missing:
         valid = ", ".join(DEFAULT_VEHICLE_CLASSES)
-        raise ValueError(f"Unknown COCO class name(s): {missing}. Example valid vehicle classes: {valid}")
-    return {COCO_NAMES.index(name) for name in names}
+        raise ValueError(f"Unknown model class name(s): {missing}. Example valid vehicle classes: {valid}")
+    return {model_names.index(name) for name in names}
