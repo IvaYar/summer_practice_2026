@@ -14,6 +14,7 @@ class AsyncDetector:
         self._frame_id = 0
         self._stopped = False
         self._completed = 0
+        self._skipped = 0
         self._latest = InferenceResult((), 0.0, perf_counter(), 0)
         self._thread = threading.Thread(target=self._run, name="detector-worker", daemon=True)
         self._thread.start()
@@ -23,11 +24,20 @@ class AsyncDetector:
         with self._condition:
             return self._completed
 
-    def submit(self, frame, frame_id: int) -> None:
+    @property
+    def skipped(self) -> int:
         with self._condition:
+            return self._skipped
+
+    def submit(self, frame, frame_id: int) -> bool:
+        with self._condition:
+            if self._frame is not None:
+                self._skipped += 1
+                return False
             self._frame = frame.copy()
             self._frame_id = frame_id
             self._condition.notify()
+            return True
 
     def latest(self) -> InferenceResult:
         with self._condition:

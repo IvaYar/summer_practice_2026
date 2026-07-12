@@ -109,6 +109,7 @@ def main() -> int:
     last_completed = 0
     sync_completed = 0
     last_sync_completed = 0
+    last_skipped = 0
     det_fps = 0.0
 
     print(
@@ -168,13 +169,18 @@ def main() -> int:
                     completed = async_worker.completed
                     det_fps = (completed - last_completed) / (now - last_print)
                     last_completed = completed
+                    skipped = async_worker.skipped
+                    skipped_delta = skipped - last_skipped
+                    last_skipped = skipped
                 else:
                     det_fps = (sync_completed - last_sync_completed) / (now - last_print)
                     last_sync_completed = sync_completed
+                    skipped_delta = 0
                 last_print = now
                 print(
                     f"frame={frame_id} display_fps={fps_now:.1f} detect_fps={det_fps:.1f} "
-                    f"infer_ms={latest_result.inference_ms:.1f} vehicles={len(latest_result.detections)}"
+                    f"infer_ms={latest_result.inference_ms:.1f} vehicles={len(latest_result.detections)} "
+                    f"skipped={skipped_delta}"
                 )
 
             if options["max_frames"] and frame_id >= int(options["max_frames"]):

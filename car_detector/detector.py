@@ -61,6 +61,7 @@ class YoloOnnxDetector:
         self.iou_threshold = float(iou_threshold)
         self.model_class_names = model_class_names or COCO_NAMES
         self.target_class_ids = class_ids_from_model_names(class_names, self.model_class_names)
+        self._target_class_ids_array = np.array(sorted(self.target_class_ids), dtype=np.int32)
         self.geometry_filter = bool(geometry_filter)
         self.min_box_area_ratio = float(min_box_area_ratio)
         self.max_box_area_ratio = float(max_box_area_ratio)
@@ -75,6 +76,7 @@ class YoloOnnxDetector:
         self.roi_y1_ratio = float(roi_y1_ratio)
         self.roi_x2_ratio = float(roi_x2_ratio)
         self.roi_y2_ratio = float(roi_y2_ratio)
+        cv2.setUseOptimized(True)
         self.net = cv2.dnn.readNetFromONNX(str(path))
         self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
         self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
@@ -162,6 +164,10 @@ class YoloOnnxDetector:
         } and columns != rows:
             predictions = predictions.T
 
+        fast_detections = self._postprocess_classic(predictions, original_shape, ratio, pad)
+        if fast_detections is not None:
+            return fast_detections
+
         boxes: list[list[int]] = []
         confidences: list[float] = []
         class_ids: list[int] = []
@@ -219,6 +225,114 @@ class YoloOnnxDetector:
                     class_name=self.model_class_names[class_id],
                     confidence=confidences[int(index)],
                     box=(x, y, x + w, y + h),
+                )
+            )
+        detections.sort(key=lambda detection: detection.confidence, reverse=True)
+        return tuple(detections)
+
+    def _postprocess_classic(
+        self,
+        predictions: np.ndarray,
+        original_shape: tuple[int, int],
+        ratio: float,
+        pad: tuple[float, float],
+    ) -> tuple[Detection, ...] | None:
+        class_count = len(self.model_class_names)
+        columns = predictions.shape[1]
+        if columns == 4 + class_count:
+            raw_boxes = predictions[:, :4].astype(np.float32, copy=False)
+            class_scores = predictions[:, 4 : 4 + class_count].astype(np.float32, copy=False)
+            objectness = None
+        elif columns == 5 + class_count:
+            raw_boxes = predictions[:, :4].astype(np.float32, copy=False)
+            objectness = predictions[:, 4].astype(np.float32, copy=False)
+            class_scores = predictions[:, 5 : 5 + class_count].astype(np.float32, copy=False)
+        else:
+            return None
+
+        target_ids = self._target_class_ids_array
+        target_ids = target_ids[target_ids < class_scores.shape[1]]
+        if len(target_ids) == 0:
+            return ()
+
+        target_scores = class_scores[:, target_ids]
+        best_target_indices = np.argmax(target_scores, axis=1)
+        row_indices = np.arange(target_scores.shape[0])
+        confidences = target_scores[row_indices, best_target_indices]
+        if objectness is not None:
+            confidences = confidences * objectness
+
+        keep = confidences >= self.conf_threshold
+        if not np.any(keep):
+            return ()
+
+        raw_boxes = raw_boxes[keep].copy()
+        confidences = confidences[keep].astype(np.float32, copy=False)
+        class_ids = target_ids[best_target_indices[keep]]
+
+        if raw_boxes.size and float(np.max(raw_boxes)) <= 1.5:
+            raw_boxes *= float(self.input_size)
+
+        pad_x, pad_y = pad
+        x_center = raw_boxes[:, 0]
+        y_center = raw_boxes[:, 1]
+        box_width = raw_boxes[:, 2]
+        box_height = raw_boxes[:, 3]
+
+        left = (x_center - box_width / 2.0 - pad_x) / ratio
+        top = (y_center - box_height / 2.0 - pad_y) / ratio
+        right = (x_center + box_width / 2.0 - pad_x) / ratio
+        bottom = (y_center + box_height / 2.0 - pad_y) / ratio
+
+        original_h, original_w = original_shape
+        left = np.clip(left, 0, original_w - 1).astype(np.int32)
+        top = np.clip(top, 0, original_h - 1).astype(np.int32)
+        right = np.clip(right, 0, original_w - 1).astype(np.int32)
+        bottom = np.clip(bottom, 0, original_h - 1).astype(np.int32)
+
+        valid = (right > left) & (bottom > top)
+        if self.geometry_filter:
+            valid &= self._passes_geometry_filter_array(
+                left,
+                top,
+                right,
+                bottom,
+                confidences,
+                original_w,
+                original_h,
+            )
+        if not np.any(valid):
+            return ()
+
+        left = left[valid]
+        top = top[valid]
+        right = right[valid]
+        bottom = bottom[valid]
+        confidences = confidences[valid]
+        class_ids = class_ids[valid]
+
+        nms_boxes = np.column_stack((left, top, right - left, bottom - top)).astype(np.int32)
+        confidence_list = confidences.astype(float).tolist()
+        indices = cv2.dnn.NMSBoxes(
+            nms_boxes.tolist(),
+            confidence_list,
+            self.conf_threshold,
+            self.iou_threshold,
+        )
+        if len(indices) == 0:
+            return ()
+
+        detections = []
+        for index in np.array(indices).reshape(-1):
+            index = int(index)
+            x, y, width, height = [int(value) for value in nms_boxes[index]]
+            class_id = int(class_ids[index])
+            detections.append(
+                Detection(
+                    class_id=class_id,
+                    class_name=self.model_class_names[class_id],
+                    confidence=float(confidences[index]),
+                    box=(x, y, x + width, y + height),
                 )
             )
         detections.sort(key=lambda detection: detection.confidence, reverse=True)
@@ -303,6 +417,43 @@ class YoloOnnxDetector:
             return False
 
         return True
+
+    def _passes_geometry_filter_array(
+        self,
+        left: np.ndarray,
+        top: np.ndarray,
+        right: np.ndarray,
+        bottom: np.ndarray,
+        confidence: np.ndarray,
+        frame_width: int,
+        frame_height: int,
+    ) -> np.ndarray:
+        width = right - left
+        height = bottom - top
+        frame_area = max(1, frame_width * frame_height)
+        area_ratio = (width * height) / frame_area
+        width_ratio = width / max(1, frame_width)
+        height_ratio = height / max(1, frame_height)
+        aspect_ratio = width / np.maximum(1, height)
+
+        valid = (
+            (area_ratio >= self.min_box_area_ratio)
+            & (area_ratio <= self.max_box_area_ratio)
+            & (width_ratio <= self.max_box_width_ratio)
+            & (height_ratio <= self.max_box_height_ratio)
+            & (aspect_ratio >= self.min_box_aspect_ratio)
+            & (aspect_ratio <= self.max_box_aspect_ratio)
+        )
+
+        margin_x = max(1, int(frame_width * self.edge_margin_ratio))
+        margin_y = max(1, int(frame_height * self.edge_margin_ratio))
+        touches_edge = (
+            (left <= margin_x)
+            | (right >= frame_width - 1 - margin_x)
+            | (bottom >= frame_height - 1 - margin_y)
+        )
+        valid &= ~(touches_edge & (confidence < self.edge_min_conf))
+        return valid
 
     def _split_scores(self, row: np.ndarray) -> tuple[np.ndarray, float]:
         class_count = len(self.model_class_names)

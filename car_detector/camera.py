@@ -45,16 +45,25 @@ class Picamera2Source:
 
         self.name = "picamera2"
         self.picam2 = Picamera2()
-        main = {"size": (width, height), "format": "RGB888"}
         controls = {"FrameRate": fps}
-        config = self.picam2.create_video_configuration(main=main, controls=controls, buffer_count=4)
-        self.picam2.configure(config)
+        self._convert_rgb_to_bgr = False
+        try:
+            main = {"size": (width, height), "format": "BGR888"}
+            config = self.picam2.create_video_configuration(main=main, controls=controls, buffer_count=4)
+            self.picam2.configure(config)
+        except Exception:
+            self._convert_rgb_to_bgr = True
+            main = {"size": (width, height), "format": "RGB888"}
+            config = self.picam2.create_video_configuration(main=main, controls=controls, buffer_count=4)
+            self.picam2.configure(config)
         self.picam2.start()
         time.sleep(1.0)
 
     def read(self):
-        frame_rgb = self.picam2.capture_array("main")
-        return cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+        frame = self.picam2.capture_array("main")
+        if self._convert_rgb_to_bgr:
+            return cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        return frame
 
     def release(self) -> None:
         self.picam2.stop()
