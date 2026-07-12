@@ -1,4 +1,0 @@
-ultralytics>=8.4.27
-opencv-python>=4.9.0
-PyYAML>=6.0
-Pillow>=10.0.0

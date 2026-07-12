@@ -10,7 +10,7 @@ except ImportError:  # pragma: no cover - handled with a clear runtime error.
 
 
 DEFAULT_CONFIG: dict[str, Any] = {
-    "model": "models/yolo11n_320.onnx",
+    "model": "models/yolo26n_320_classic.onnx",
     "source": "auto",
     "video": None,
     "camera_index": 0,
@@ -18,12 +18,13 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "height": 480,
     "fps": 30,
     "input_size": 320,
-    "conf": 0.35,
+    "conf": 0.25,
     "iou": 0.45,
     "classes": "car,bus,truck",
     "model_classes": "coco",
     "threads": 4,
     "async_inference": True,
+    "detect_every": 2,
     "headless": False,
     "save": None,
     "window_x": 0,

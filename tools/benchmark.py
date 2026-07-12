@@ -16,7 +16,7 @@ from car_detector.detector import YoloOnnxDetector
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Measure real detector FPS on this machine.")
-    parser.add_argument("--model", default="models/yolo11n_320.onnx")
+    parser.add_argument("--model", default="models/yolo26n_320_classic.onnx")
     parser.add_argument("--source", choices=["auto", "picamera2", "opencv"], default="auto")
     parser.add_argument("--video", default=None)
     parser.add_argument("--camera-index", type=int, default=0)

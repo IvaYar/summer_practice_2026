@@ -4,7 +4,7 @@
 
 ## Что важно по FPS
 
-Raspberry Pi 5 16 GB построен на Broadcom BCM2712: 4 ядра Arm Cortex-A76 @ 2.4 GHz и VideoCore VII GPU. Для камеры и UI это бодро, но нейросетевой детект машин в честные 30 FPS на CPU зависит от размера модели, `input_size`, разрешения и охлаждения. Этот проект показывает камеру около 30 FPS и запускает детектор в отдельном потоке на последних кадрах. Реальный `detect_fps` надо измерить на твоем Pi.
+Raspberry Pi 5 16 GB построен на Broadcom BCM2712: 4 ядра Arm Cortex-A76 @ 2.4 GHz и VideoCore VII GPU. Для камеры и UI это бодро, но нейросетевой детект машин в честные 30 FPS на CPU зависит от размера модели, `input_size`, разрешения и охлаждения. Этот проект показывает камеру около 30 FPS и запускает детектор в отдельном потоке на последних кадрах. По умолчанию используется `detect_every: 2`: видео остается плавным, а нейросеть запускается на каждом втором кадре. Реальный `detect_fps` надо измерить на твоем Pi.
 
 Если нужна стабильная детекция 30 FPS, почти наверняка понадобится AI-ускоритель: Raspberry Pi AI HAT+/AI Kit на Hailo или другой NPU/TPU. Важно: если M.2-разъем уже занят SSD, Hailo M.2-ускоритель обычно некуда поставить без другой схемы подключения.
 
@@ -40,13 +40,13 @@ rpicam-hello -t 5000
 ```bash
 source .venv/bin/activate
 python -m pip install -r requirements-export.txt
-python tools/export_yolo_onnx.py --weights yolo11n.pt --imgsz 320 --output models/yolo11n_320.onnx
+python tools/export_yolo_onnx.py --weights yolo26n.pt --imgsz 320 --no-end2end --output models/yolo26n_320_classic.onnx
 ```
 
 Более быстрый, но менее точный вариант:
 
 ```bash
-python tools/export_yolo_onnx.py --weights yolo11n.pt --imgsz 256 --output models/yolo11n_256.onnx
+python tools/export_yolo_onnx.py --weights yolo26n.pt --imgsz 256 --no-end2end --output models/yolo26n_256_classic.onnx
 ```
 
 ## Запуск
@@ -81,6 +81,13 @@ python -m car_detector.app --config configs/video_debug.yaml --video path/to/roa
 python -m car_detector.app --config configs/video_debug.yaml --video test_videos/own_test_sample.mp4
 ```
 
+Если нужно детектить каждый кадр или, наоборот, разгрузить Pi сильнее:
+
+```bash
+python -m car_detector.app --config configs/video_debug.yaml --video test_videos/own_test.mp4 --detect-every 1
+python -m car_detector.app --config configs/video_debug.yaml --video test_videos/own_test.mp4 --detect-every 3
+```
+
 Быстрый ROI-режим для дорожного видео: модель смотрит только на область дороги и может работать с меньшим `input_size`:
 
 ```bash
@@ -98,7 +105,7 @@ python -m car_detector.app --config configs/video_roi_fast.yaml --video test_vid
 ## Бенчмарк настоящего FPS детектора
 
 ```bash
-python tools/benchmark.py --model models/yolo11n_320.onnx --source picamera2 --seconds 30
+python tools/benchmark.py --model models/yolo26n_320_classic.onnx --source picamera2 --seconds 30
 ```
 
 Если `detector_fps` сильно ниже 30:
@@ -106,88 +113,10 @@ python tools/benchmark.py --model models/yolo11n_320.onnx --source picamera2 --s
 - попробуй `configs/pi5_fast.yaml`;
 - уменьши `--input-size 256`;
 - поставь `--width 640 --height 360`;
+- увеличь `--detect-every 3` в realtime-запуске;
 - подними `--conf 0.4`;
 - проверь охлаждение и питание Pi 5;
 - для стабильных 30 FPS переходи на Hailo/TPU backend.
-
-## Ночное vehicle-only обучение
-
-Экспериментальный путь: собрать псевдо-разметку из твоего видео и обучить модель только на `car,bus,truck`. Это может помочь подстроиться под dashcam-ракурс, но авторазметка не заменяет ручную правку кадров.
-
-На Windows-ПК:
-
-```powershell
-py -3 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip wheel
-.\.venv\Scripts\python.exe -m pip install -r requirements-training.txt
-```
-
-Собрать датасет из видео:
-
-```powershell
-.\.venv\Scripts\python.exe tools\build_vehicle_dataset.py --video "C:\Users\jarom\Desktop\car_project\vehicle-oncoming-detector\test_videos\own_test.mp4" --output datasets\vehicle_pseudo --teacher yolo26n.pt --label-imgsz 640 --conf 0.18 --sample-every 15 --max-frames 800 --overwrite
-```
-
-Запустить обучение на CPU:
-
-```powershell
-.\.venv\Scripts\python.exe tools\train_vehicle_model.py --data datasets\vehicle_pseudo\dataset.yaml --weights yolo26n.pt --imgsz 320 --epochs 40 --batch 2 --device cpu --output models\vehicle_yolo26n_320.onnx
-```
-
-Проверить результат:
-
-```powershell
-.\.venv\Scripts\python.exe -m car_detector.app --config configs/video_debug.yaml --video test_videos\own_test_sample.mp4 --model models\vehicle_yolo26n_320.onnx --input-size 320 --conf 0.2
-```
-
-## BDD100K vehicle-only обучение
-
-BDD100K ближе к dashcam-видео, чем авторазметка одного ролика. Нужны официальные архивы:
-
-- `100K Images`
-- `Detection 2020 Labels`
-
-Скачать их нужно вручную с сайта BDD100K после регистрации: https://www.bdd100k.com/
-
-Распакуй архивы в одну папку, например:
-
-```text
-C:\datasets\bdd100k
-```
-
-Конвертер ожидает одну из таких структур:
-
-```text
-C:\datasets\bdd100k\images\100k\train
-C:\datasets\bdd100k\images\100k\val
-C:\datasets\bdd100k\labels\det_20\det_train.json
-C:\datasets\bdd100k\labels\det_20\det_val.json
-```
-
-или такую:
-
-```text
-C:\datasets\bdd100k\bdd100k\images\100k\train
-C:\datasets\bdd100k\bdd100k\labels\det_20\det_train.json
-```
-
-Собрать subset `car,bus,truck` и обучить модель:
-
-```powershell
-.\scripts\run_bdd100k_training.ps1 -BddRoot "C:\datasets\bdd100k" -MaxTrain 10000 -MaxVal 2000 -Epochs 30 -Batch 2
-```
-
-Готовая модель:
-
-```text
-models\bdd_vehicle_yolo26n_320.onnx
-```
-
-Проверка:
-
-```powershell
-.\.venv\Scripts\python.exe -m car_detector.app --config configs/video_debug.yaml --video "C:\Users\jarom\Desktop\car_project\vehicle-oncoming-detector\test_videos\own_test.mp4" --model models\bdd_vehicle_yolo26n_320.onnx --input-size 320 --conf 0.2
-```
 
 ## Структура
 

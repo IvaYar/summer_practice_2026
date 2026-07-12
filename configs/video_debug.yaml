@@ -1,4 +1,4 @@
-model: models/yolo11n_320.onnx
+model: models/yolo26n_320_classic.onnx
 source: opencv
 video: null
 camera_index: 0
@@ -6,11 +6,12 @@ width: 640
 height: 480
 fps: 30
 input_size: 320
-conf: 0.35
+conf: 0.25
 iou: 0.45
 classes: car,bus,truck
 threads: 4
 async_inference: true
+detect_every: 2
 headless: false
 window_x: 0
 window_y: 0

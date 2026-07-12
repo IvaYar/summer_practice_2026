@@ -36,6 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--threads", type=int, default=None)
     parser.add_argument("--async-inference", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--detect-every", type=int, default=None, help="Run detection every Nth frame.")
     parser.add_argument("--headless", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--save", default=None, help="Optional output video path.")
     parser.add_argument("--window-x", type=int, default=None, help="Display window X position.")
@@ -99,17 +100,20 @@ def main() -> int:
     )
 
     async_worker = AsyncDetector(detector) if options["async_inference"] else None
+    detect_every = max(1, int(options["detect_every"]))
     display_fps = RateMeter()
     latest_result = InferenceResult((), 0.0, perf_counter(), 0)
     writer = None
     frame_id = 0
     last_print = perf_counter()
     last_completed = 0
+    sync_completed = 0
+    last_sync_completed = 0
     det_fps = 0.0
 
     print(
         f"source={source.name} model={options['model']} input={options['input_size']} "
-        f"classes={','.join(class_names)} async={bool(async_worker)}"
+        f"classes={','.join(class_names)} async={bool(async_worker)} detect_every={detect_every}"
     )
 
     if not options["headless"]:
@@ -123,12 +127,16 @@ def main() -> int:
                 break
             frame_id += 1
             fps_now = display_fps.tick()
+            should_detect = frame_id == 1 or (frame_id - 1) % detect_every == 0
 
             if async_worker:
-                async_worker.submit(frame, frame_id)
+                if should_detect:
+                    async_worker.submit(frame, frame_id)
                 latest_result = async_worker.latest()
             else:
-                latest_result = detector.detect_timed(frame, frame_id)
+                if should_detect:
+                    latest_result = detector.detect_timed(frame, frame_id)
+                    sync_completed += 1
 
             draw_detections(frame, latest_result.detections)
             if options["roi"] and options["show_roi"]:
@@ -161,7 +169,8 @@ def main() -> int:
                     det_fps = (completed - last_completed) / (now - last_print)
                     last_completed = completed
                 else:
-                    det_fps = fps_now
+                    det_fps = (sync_completed - last_sync_completed) / (now - last_print)
+                    last_sync_completed = sync_completed
                 last_print = now
                 print(
                     f"frame={frame_id} display_fps={fps_now:.1f} detect_fps={det_fps:.1f} "

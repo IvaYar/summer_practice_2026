@@ -11,6 +11,7 @@ iou: 0.45
 classes: car,bus,truck
 threads: 4
 async_inference: true
+detect_every: 2
 headless: false
 window_x: 0
 window_y: 0

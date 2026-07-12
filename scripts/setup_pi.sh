@@ -18,4 +18,4 @@ python -m pip install -r requirements-runtime.txt
 echo
 echo "Runtime is ready."
 echo "Activate it with: source .venv/bin/activate"
-echo "Export a model with: python tools/export_yolo_onnx.py --weights yolo11n.pt --imgsz 320 --output models/yolo11n_320.onnx"
+echo "Export a model with: python tools/export_yolo_onnx.py --weights yolo26n.pt --imgsz 320 --no-end2end --output models/yolo26n_320_classic.onnx"
