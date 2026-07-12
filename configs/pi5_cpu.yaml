@@ -37,6 +37,6 @@ show_oncoming_zone: false
 hud_scale: 0.90
 hud_thickness: 2
 warning_line: true
-warning_line_y_ratio: 0.55
+warning_line_y_ratio: 0.54
 print_every: 1.0
 max_frames: 0
