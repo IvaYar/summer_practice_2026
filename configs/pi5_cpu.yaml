@@ -31,6 +31,11 @@ roi_y2_ratio: 0.88
 show_roi: true
 oncoming_filter: true
 oncoming_side: left
+oncoming_boundary: diagonal
+oncoming_line_x1_ratio: 0.25
+oncoming_line_y1_ratio: 1.00
+oncoming_line_x2_ratio: 0.85
+oncoming_line_y2_ratio: 0.05
 oncoming_split_x_ratio: 0.50
 oncoming_min_y_ratio: 0.25
 show_oncoming_zone: false
