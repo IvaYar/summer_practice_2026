@@ -44,6 +44,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "roi_x2_ratio": 1.00,
     "roi_y2_ratio": 0.88,
     "show_roi": True,
+    "warning_line": True,
+    "warning_line_y_ratio": 0.55,
     "print_every": 1.0,
     "max_frames": 0,
 }

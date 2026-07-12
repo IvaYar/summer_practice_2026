@@ -28,6 +28,18 @@ def draw_roi(frame, box: tuple[int, int, int, int]) -> None:
     cv2.rectangle(frame, (x1, y1), (x2, y2), (245, 245, 245), 1)
 
 
+def draw_warning_line(
+    frame,
+    y_ratio: float,
+    label: str = "NO OVERTAKING",
+    color: tuple[int, int, int] = (0, 0, 255),
+) -> None:
+    height, width = frame.shape[:2]
+    y = int(round(height * max(0.0, min(1.0, float(y_ratio)))))
+    cv2.line(frame, (0, y), (width, y), color, 3, cv2.LINE_AA)
+    _draw_label(frame, label, 10, max(24, y - 8), color)
+
+
 def draw_status(frame, lines: list[str]) -> None:
     x, y = 10, 24
     line_height = 24

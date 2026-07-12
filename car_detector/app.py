@@ -9,7 +9,7 @@ from .async_infer import AsyncDetector
 from .camera import create_source
 from .config import merge_options, parse_classes
 from .detector import InferenceResult, YoloOnnxDetector
-from .overlay import age_ms, draw_detections, draw_roi, draw_status
+from .overlay import age_ms, draw_detections, draw_roi, draw_status, draw_warning_line
 from .rate import RateMeter
 
 WINDOW_NAME = "Pi5 car detector"
@@ -56,6 +56,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--roi-x2-ratio", type=float, default=None)
     parser.add_argument("--roi-y2-ratio", type=float, default=None)
     parser.add_argument("--show-roi", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--warning-line", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--warning-line-y-ratio", type=float, default=None)
     parser.add_argument("--print-every", type=float, default=None)
     parser.add_argument("--max-frames", type=int, default=None)
     return parser
@@ -142,6 +144,8 @@ def main() -> int:
             draw_detections(frame, latest_result.detections)
             if options["roi"] and options["show_roi"]:
                 draw_roi(frame, detector.roi_box(frame.shape[:2]))
+            if options["warning_line"]:
+                draw_warning_line(frame, options["warning_line_y_ratio"])
             draw_status(
                 frame,
                 [
