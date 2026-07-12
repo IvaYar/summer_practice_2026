@@ -49,6 +49,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "oncoming_split_x_ratio": 0.50,
     "oncoming_min_y_ratio": 0.25,
     "show_oncoming_zone": False,
+    "hud_scale": 0.62,
+    "hud_thickness": 1,
     "warning_line": True,
     "warning_line_y_ratio": 0.55,
     "print_every": 1.0,

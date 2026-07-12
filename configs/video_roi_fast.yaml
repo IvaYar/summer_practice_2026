@@ -35,6 +35,8 @@ oncoming_side: left
 oncoming_split_x_ratio: 0.50
 oncoming_min_y_ratio: 0.25
 show_oncoming_zone: false
+hud_scale: 0.90
+hud_thickness: 2
 warning_line: true
 warning_line_y_ratio: 0.55
 print_every: 1.0

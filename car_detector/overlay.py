@@ -58,13 +58,19 @@ def draw_warning_line(
     return crossed
 
 
-def draw_status(frame, lines: list[str]) -> None:
-    x, y = 10, 24
-    line_height = 24
+def draw_status(frame, lines: list[str], scale: float = 0.62, thickness: int = 1) -> None:
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    scale = max(0.2, float(scale))
+    thickness = max(1, int(thickness))
+    (_, text_height), baseline = cv2.getTextSize("Ag", font, scale, thickness)
+    x = 10
+    y = max(24, text_height + baseline + 8)
+    line_height = text_height + baseline + 10
+    outline = max(thickness + 3, int(round(thickness + scale * 4)))
     for index, text in enumerate(lines):
         pos = (x, y + index * line_height)
-        cv2.putText(frame, text, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (0, 0, 0), 4, cv2.LINE_AA)
-        cv2.putText(frame, text, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (245, 245, 245), 1, cv2.LINE_AA)
+        cv2.putText(frame, text, pos, font, scale, (0, 0, 0), outline, cv2.LINE_AA)
+        cv2.putText(frame, text, pos, font, scale, (245, 245, 245), thickness, cv2.LINE_AA)
 
 
 def _box_bottom_crosses_line(box: tuple[int, int, int, int], line_y: int) -> bool:

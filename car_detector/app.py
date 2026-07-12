@@ -64,6 +64,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--show-oncoming-zone", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--warning-line", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--warning-line-y-ratio", type=float, default=None)
+    parser.add_argument("--hud-scale", type=float, default=None)
+    parser.add_argument("--hud-thickness", type=int, default=None)
     parser.add_argument("--print-every", type=float, default=None)
     parser.add_argument("--max-frames", type=int, default=None)
     return parser
@@ -179,6 +181,8 @@ def main() -> int:
                     f"infer {latest_result.inference_ms:5.1f} ms  age {age_ms(latest_result.timestamp):4.0f} ms",
                     vehicle_status,
                 ],
+                scale=options["hud_scale"],
+                thickness=options["hud_thickness"],
             )
 
             if writer is None and options["save"]:
