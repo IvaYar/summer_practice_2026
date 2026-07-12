@@ -28,6 +28,23 @@ def draw_roi(frame, box: tuple[int, int, int, int]) -> None:
     cv2.rectangle(frame, (x1, y1), (x2, y2), (245, 245, 245), 1)
 
 
+def draw_oncoming_boundary(
+    frame,
+    side: str,
+    split_x_ratio: float,
+    min_y_ratio: float,
+) -> None:
+    height, width = frame.shape[:2]
+    split_x = int(round(width * max(0.0, min(1.0, float(split_x_ratio)))))
+    min_y = int(round(height * max(0.0, min(1.0, float(min_y_ratio)))))
+    color = (0, 255, 255)
+    cv2.line(frame, (split_x, min_y), (split_x, height), color, 1, cv2.LINE_AA)
+    if side == "left":
+        cv2.line(frame, (0, min_y), (split_x, min_y), color, 1, cv2.LINE_AA)
+    else:
+        cv2.line(frame, (split_x, min_y), (width, min_y), color, 1, cv2.LINE_AA)
+
+
 def draw_warning_line(
     frame,
     y_ratio: float,

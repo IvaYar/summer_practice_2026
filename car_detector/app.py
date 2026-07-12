@@ -9,7 +9,8 @@ from .async_infer import AsyncDetector
 from .camera import create_source
 from .config import merge_options, parse_classes
 from .detector import InferenceResult, YoloOnnxDetector
-from .overlay import age_ms, draw_detections, draw_roi, draw_status, draw_warning_line
+from .oncoming import filter_oncoming_detections
+from .overlay import age_ms, draw_detections, draw_oncoming_boundary, draw_roi, draw_status, draw_warning_line
 from .rate import RateMeter
 
 WINDOW_NAME = "Pi5 car detector"
@@ -56,6 +57,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--roi-x2-ratio", type=float, default=None)
     parser.add_argument("--roi-y2-ratio", type=float, default=None)
     parser.add_argument("--show-roi", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--oncoming-filter", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--oncoming-side", choices=["left", "right"], default=None)
+    parser.add_argument("--oncoming-split-x-ratio", type=float, default=None)
+    parser.add_argument("--oncoming-min-y-ratio", type=float, default=None)
+    parser.add_argument("--show-oncoming-zone", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--warning-line", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--warning-line-y-ratio", type=float, default=None)
     parser.add_argument("--print-every", type=float, default=None)
@@ -141,17 +147,37 @@ def main() -> int:
                     latest_result = detector.detect_timed(frame, frame_id)
                     sync_completed += 1
 
-            draw_detections(frame, latest_result.detections)
+            visible_detections = filter_oncoming_detections(
+                latest_result.detections,
+                frame.shape[:2],
+                enabled=options["oncoming_filter"],
+                side=options["oncoming_side"],
+                split_x_ratio=options["oncoming_split_x_ratio"],
+                min_y_ratio=options["oncoming_min_y_ratio"],
+            )
+            draw_detections(frame, visible_detections)
+            if options["show_oncoming_zone"]:
+                draw_oncoming_boundary(
+                    frame,
+                    options["oncoming_side"],
+                    options["oncoming_split_x_ratio"],
+                    options["oncoming_min_y_ratio"],
+                )
             if options["roi"] and options["show_roi"]:
                 draw_roi(frame, detector.roi_box(frame.shape[:2]))
             if options["warning_line"]:
-                draw_warning_line(frame, options["warning_line_y_ratio"], latest_result.detections)
+                draw_warning_line(frame, options["warning_line_y_ratio"], visible_detections)
+            vehicle_status = (
+                f"oncoming {len(visible_detections)} / total {len(latest_result.detections)}"
+                if options["oncoming_filter"]
+                else f"vehicles {len(visible_detections)}"
+            )
             draw_status(
                 frame,
                 [
                     f"display {fps_now:4.1f} FPS  detect {det_fps:4.1f} FPS",
                     f"infer {latest_result.inference_ms:5.1f} ms  age {age_ms(latest_result.timestamp):4.0f} ms",
-                    f"vehicles {len(latest_result.detections)}",
+                    vehicle_status,
                 ],
             )
 
@@ -183,7 +209,8 @@ def main() -> int:
                 last_print = now
                 print(
                     f"frame={frame_id} display_fps={fps_now:.1f} detect_fps={det_fps:.1f} "
-                    f"infer_ms={latest_result.inference_ms:.1f} vehicles={len(latest_result.detections)} "
+                    f"infer_ms={latest_result.inference_ms:.1f} vehicles={len(visible_detections)} "
+                    f"raw={len(latest_result.detections)} "
                     f"skipped={skipped_delta}"
                 )
 
