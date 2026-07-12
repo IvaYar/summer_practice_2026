@@ -41,3 +41,9 @@ warning_line: true
 warning_line_y_ratio: 0.55
 print_every: 1.0
 max_frames: 0
+oncoming_boundary: diagonal
+oncoming_line_x1_ratio: 0.25
+oncoming_line_y1_ratio: 1.00
+oncoming_line_x2_ratio: 0.85
+oncoming_line_y2_ratio: 0.05
+oncoming_split_x_ratio: 0.50
