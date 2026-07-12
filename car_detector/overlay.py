@@ -31,13 +31,16 @@ def draw_roi(frame, box: tuple[int, int, int, int]) -> None:
 def draw_warning_line(
     frame,
     y_ratio: float,
+    detections: tuple[Detection, ...] = (),
     label: str = "NO OVERTAKING",
-    color: tuple[int, int, int] = (0, 0, 255),
-) -> None:
+) -> bool:
     height, width = frame.shape[:2]
     y = int(round(height * max(0.0, min(1.0, float(y_ratio)))))
+    crossed = any(_box_bottom_crosses_line(detection.box, y) for detection in detections)
+    color = (0, 0, 255) if crossed else (0, 255, 255)
     cv2.line(frame, (0, y), (width, y), color, 3, cv2.LINE_AA)
     _draw_label(frame, label, 10, max(24, y - 8), color)
+    return crossed
 
 
 def draw_status(frame, lines: list[str]) -> None:
@@ -47,6 +50,10 @@ def draw_status(frame, lines: list[str]) -> None:
         pos = (x, y + index * line_height)
         cv2.putText(frame, text, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (0, 0, 0), 4, cv2.LINE_AA)
         cv2.putText(frame, text, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (245, 245, 245), 1, cv2.LINE_AA)
+
+
+def _box_bottom_crosses_line(box: tuple[int, int, int, int], line_y: int) -> bool:
+    return box[3] >= line_y
 
 
 def age_ms(timestamp: float) -> float:

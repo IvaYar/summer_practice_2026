@@ -145,7 +145,7 @@ def main() -> int:
             if options["roi"] and options["show_roi"]:
                 draw_roi(frame, detector.roi_box(frame.shape[:2]))
             if options["warning_line"]:
-                draw_warning_line(frame, options["warning_line_y_ratio"])
+                draw_warning_line(frame, options["warning_line_y_ratio"], latest_result.detections)
             draw_status(
                 frame,
                 [
