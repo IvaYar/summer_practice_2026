@@ -33,11 +33,25 @@ def draw_oncoming_boundary(
     side: str,
     split_x_ratio: float,
     min_y_ratio: float,
+    boundary: str = "diagonal",
+    line_x1_ratio: float = 0.42,
+    line_y1_ratio: float = 1.00,
+    line_x2_ratio: float = 0.84,
+    line_y2_ratio: float = 0.05,
 ) -> None:
     height, width = frame.shape[:2]
+    color = (0, 255, 255)
+    boundary = boundary.lower().strip()
+    if boundary == "diagonal":
+        x1 = int(round(width * max(0.0, min(1.0, float(line_x1_ratio)))))
+        y1 = int(round(height * max(0.0, min(1.0, float(line_y1_ratio)))))
+        x2 = int(round(width * max(0.0, min(1.0, float(line_x2_ratio)))))
+        y2 = int(round(height * max(0.0, min(1.0, float(line_y2_ratio)))))
+        cv2.line(frame, (x1, y1), (x2, y2), color, 2, cv2.LINE_AA)
+        return
+
     split_x = int(round(width * max(0.0, min(1.0, float(split_x_ratio)))))
     min_y = int(round(height * max(0.0, min(1.0, float(min_y_ratio)))))
-    color = (0, 255, 255)
     cv2.line(frame, (split_x, min_y), (split_x, height), color, 1, cv2.LINE_AA)
     if side == "left":
         cv2.line(frame, (0, min_y), (split_x, min_y), color, 1, cv2.LINE_AA)

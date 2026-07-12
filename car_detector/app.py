@@ -59,6 +59,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--show-roi", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--oncoming-filter", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--oncoming-side", choices=["left", "right"], default=None)
+    parser.add_argument("--oncoming-boundary", choices=["vertical", "diagonal"], default=None)
+    parser.add_argument("--oncoming-line-x1-ratio", type=float, default=None)
+    parser.add_argument("--oncoming-line-y1-ratio", type=float, default=None)
+    parser.add_argument("--oncoming-line-x2-ratio", type=float, default=None)
+    parser.add_argument("--oncoming-line-y2-ratio", type=float, default=None)
     parser.add_argument("--oncoming-split-x-ratio", type=float, default=None)
     parser.add_argument("--oncoming-min-y-ratio", type=float, default=None)
     parser.add_argument("--show-oncoming-zone", action=argparse.BooleanOptionalAction, default=None)
@@ -156,6 +161,11 @@ def main() -> int:
                 side=options["oncoming_side"],
                 split_x_ratio=options["oncoming_split_x_ratio"],
                 min_y_ratio=options["oncoming_min_y_ratio"],
+                boundary=options["oncoming_boundary"],
+                line_x1_ratio=options["oncoming_line_x1_ratio"],
+                line_y1_ratio=options["oncoming_line_y1_ratio"],
+                line_x2_ratio=options["oncoming_line_x2_ratio"],
+                line_y2_ratio=options["oncoming_line_y2_ratio"],
             )
             draw_detections(frame, visible_detections)
             if options["show_oncoming_zone"]:
@@ -164,6 +174,11 @@ def main() -> int:
                     options["oncoming_side"],
                     options["oncoming_split_x_ratio"],
                     options["oncoming_min_y_ratio"],
+                    options["oncoming_boundary"],
+                    options["oncoming_line_x1_ratio"],
+                    options["oncoming_line_y1_ratio"],
+                    options["oncoming_line_x2_ratio"],
+                    options["oncoming_line_y2_ratio"],
                 )
             if options["roi"] and options["show_roi"]:
                 draw_roi(frame, detector.roi_box(frame.shape[:2]))
