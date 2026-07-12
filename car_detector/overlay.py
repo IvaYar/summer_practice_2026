@@ -32,14 +32,12 @@ def draw_warning_line(
     frame,
     y_ratio: float,
     detections: tuple[Detection, ...] = (),
-    label: str = "NO OVERTAKING",
 ) -> bool:
     height, width = frame.shape[:2]
     y = int(round(height * max(0.0, min(1.0, float(y_ratio)))))
     crossed = any(_box_bottom_crosses_line(detection.box, y) for detection in detections)
     color = (0, 0, 255) if crossed else (0, 255, 255)
     cv2.line(frame, (0, y), (width, y), color, 3, cv2.LINE_AA)
-    _draw_label(frame, label, 10, max(24, y - 8), color)
     return crossed
 
 
